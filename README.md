@@ -35,6 +35,17 @@ conda install <PACKAGE>
 
 # What the current code entails 
 1. 'edge_detection_chambers.py' is a function code that helps detect the edges of the chamber present in the images captured under a normal PHC light.
-Sample of the image detection using this code is as shown below. 
+    The code detects the images captured and outputs the edges in terms of pixel coordinates. The pixels of the images taken are 2048 by 2048. 
+    For example, this image below has edges located in '[(289, 330), (289, 1874), (1888, 330), (1888, 1874)]' (top_left, bottom_left, top_right, bottom_right):  
+    ![Figure 2022-12-21 131637](https://user-images.githubusercontent.com/98775102/208978521-504a5386-2245-491c-8186-3b8c76d107e6.png)
+    
+    Furthermore, the class 'ref_chamber' in the code enables the first image taken, that is manually positioned, to be used as a reference for the position and           orientation of subsequent chambers. The other functions in this library includes drawing the edges, detecting the chamber size and fixing the errors in terms of       both edge recognition and the stage position to capture the chamber in the same position and orientation as the reference. 
+    
+    However, there is a need to improve the error recognition and adjustment as the algorithm can take the wrong set of edges as shown below: 
+    ![Figure 2022-12-21 131447](https://user-images.githubusercontent.com/98775102/208979235-3e13b80a-bf23-44c8-b0a5-079a80759dfb.png)
 
-
+2. In the experiments folder, the codes updated there can be used for different types of experiments according to the design of the microfluidic chamber. For now, it     can only take 1 run through of the experiment. It still needs to be changed to fit the current 'edge_detection_chambers.py' library.
+    
+    
+    
+    
