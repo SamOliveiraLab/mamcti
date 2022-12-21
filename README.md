@@ -31,8 +31,8 @@ conda install <PACKAGE>
 
 2. There is a need to do a hardware configuration to connect the microscope to the program. Check out the [Micromanager page](https://micro-manager.org/wiki/Micro-Manager_Configuration_Guide#Hardware_Configuration_Wizad) to walk you through it. 
 
-    a. We add `Ti2_Mic_Driver.dll` file into the Micro-Manager program file in the computer because we use a Nikon Ti2 microscope
-    b. We also use a PCO camera, so we added `PCO_CDlg.dll` , `PCO_Conv.dll`, and `PCO_Kamlib64.dll` files into the same program file.  
+     a. We add `Ti2_Mic_Driver.dll` file into the Micro-Manager program file in the computer because we use a Nikon Ti2 microscope                
+     b. We also use a PCO camera, so we added `PCO_CDlg.dll` , `PCO_Conv.dll`, and `PCO_Kamlib64.dll` files into the same program file.  
 
 # What the current code entails 
 1. `edge_detection_chambers.py` is a function code that helps detect the edges of the chamber present in the images captured under a normal PHC light.
