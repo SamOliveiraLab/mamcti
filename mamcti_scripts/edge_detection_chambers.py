@@ -12,6 +12,50 @@ import skimage.exposure as exposure
 import math
 
 
+#Input the reference chamber details 
+class ref_chamber:
+
+    def __init__(self, image, index_height):
+        self.input_image = image
+        self.ref_height= index_height
+      
+    def ori_image_data(self):
+        sobel_image= sobel_operations(self.input_image)
+        ori_area= sobel_image.shape[0]*sobel_image.shape[1]
+        ori_edge = []
+        ref_edge =[]
+        ori_midpoint =[]
+        list_mlg = []
+        listof_t =[]
+        minarea= 0.53*ori_area
+        maxarea= 0.60*ori_area
+
+        for t in np.arange(60,80,1): 
+            for mlg in [5,10]: 
+                edge, midpt,_,_ = findedges(sobel_image,t,mlg)
+                if chamber_size(edge) > minarea and chamber_size(edge) <maxarea:
+                    if min(edge)[0] != 0 or min(edge)[1] != 0: 
+                         ori_edge.append(edge)
+                         ori_midpoint.append(midpt)
+                         list_mlg.append(mlg)
+                         listof_t.append(t)
+                         
+        area = ori_area
+        for i, edge in enumerate(ori_edge):
+            calc_area = chamber_size(edge)
+            if calc_area < area :
+                ref_edge = edge
+                ref_mlg = list_mlg[i]
+                ref_t = listof_t[i]
+                ref_area = calc_area
+                ref_midpt= ori_midpoint[i]
+                area= calc_area
+
+        return ref_edge, ref_midpt, ref_mlg, ref_t, listof_t, ref_area, ori_area
+        
+  
+    
+    
 def sobel_operations(inp_img): 
     img = cv2.GaussianBlur(inp_img,(0,0),1.3,1.3)
     
@@ -31,6 +75,7 @@ def sobel_operations(inp_img):
 
 
     return sobel_magnitude
+
 
 def findedges(img_matrix, t, mlg): 
     img2= img_matrix.copy() 
@@ -65,10 +110,8 @@ def findedges(img_matrix, t, mlg):
             vert_lines.append(lines_coor)
 
         if (abs(lines_coor[0][1]-lines_coor[1][1]) <= smallest_diff ): 
-
             hor_lines.append(lines_coor)
-
-    LL= []                 
+             
     minv= img2.shape[1]
     maxv= 0
     for i, lines in enumerate(vert_lines):
@@ -101,7 +144,6 @@ def findedges(img_matrix, t, mlg):
     midpoint = ((minv+maxv)/2 ,(minh+maxh)/2  )
     return boxcoor, midpoint
 
-
 def chamber_size(boxcoor): 
     area = abs(boxcoor[0][1]-boxcoor[1][1])* abs(boxcoor[0][0]-boxcoor[2][0])
     return area 
@@ -109,47 +151,86 @@ def chamber_size(boxcoor):
 def check_edges(boxcoor, ori_area): 
     # Debug to see if we get a good box 
     area= chamber_size(boxcoor)
-    if  0.5*ori_area < area and area < 0.55*ori_area:
+    if  0.50*ori_area < area and area < 0.70*ori_area:
         move_on = True
     else :
         move_on = False
     return  move_on
 
-
-def reform_edge(move_on, ref_midpt, new_midpt, ref_edge, edges, LL, img_size):
+def fix_edge_position(ref_midpt, ref_edge, ref_t, ref_mlg, ori_area, sobel_image,  errorimg_size):
+   
+   edges,new_midpt, vert_lines, hor_lines = findedges(img_matrix, ref_t,  ref_mlg)
+   move_on= check_edges(edges, ori_area)
    if move_on:
        x= ref_midpt[0]-ref_midpt[1]
        y= new_midpt[1]-ref_midpt[1]
        boxcoor_new= edges
    else: 
-       rightdiff=500 #100 pixels
-       
-       if abs(edges[0][0]-edges[2][0])<rightdiff:
-           if min(LL[0])[1] <  img_size[0]/2:
-               #box is in the 1st or 2nd quadrant 
-               minv=0
-               maxv=edges[2][0]
-               x = ref_edge[2][0] - maxv 
-           elif min(LL[0])[1] >   img_size[0]/2: 
-               #box is in the 3rd or 4th quadrant 
-               minv= edges[2][0]
-               maxv=  img_size[0]
-               x= ref_edge[0][0] - minv
+       if chamber_size(edges) < chamber_size(ref_edge):
+           rightdiff=500 #100 pixels
+           
+           if abs(edges[0][0]-edges[2][0])<rightdiff:
+               if edges[2][0] <  img_size[0]/2:
+                   #maximum vertical point is less than the half point
+                   #box is in the 1st or 2nd quadrant 
+                   minv=0
+                   maxv=edges[2][0]
+                   x = ref_edge[2][0] - maxv 
+                   
+               elif edges[0][0] >  img_size[0]/2:
+                   #minimum vertical point is more than the half point
+                   #box is in the 3rd or 4th quadrant 
+                   minv= edges[2][0]
+                   maxv=  img_size[0]
+                   x= ref_edge[0][0] - minv
+     
+                  
+           if abs(edges[0][1]-edges[1][1])<rightdiff:
+               if edges[1][1] <img_size[1]/2:
+                   #maximum horizontal point is less than the half point
+                   #move the box to the right
+                   minh=0
+                   maxh=edges[1][1]
+                   y = maxh - ref_edge[1][1]
+               elif edges[0][1] > img_size[1]/2 : 
+                   #minimum horizontal point is more than the half point
+                   #move the box to the left
+                   minh= edges[1][1]
+                   maxh= img_size[1]
+                   y = minh - ref_edge[0][1]
+  
+#        else:
+#            #the horizontal line is way too long!!!! 
+#            if edges[2][0]-edges[0][0] > ref_edge[2][0]-ref_edge[0][0]:
                
-              
-       if abs(edges[0][1]-edges[1][1])<rightdiff:
-           if min(LL[2])[0] <img_size[1]/2:
-               #move the box to the right
-               minh=0
-               maxh=edges[1][1]
-               y = maxh - ref_edge[1][1]
-           elif min(LL[2])[0] > img_size[1]/2 : 
-               #move the box to the left
-               minh= edges[1][1]
-               maxh= img_size[1]
-               y = minh - ref_edge[0][1]
-               
-               
+#                for i, lines in enumerate(vert_lines):
+                  
+#                    if maxv-minv > ref_edge[2][0]-ref_edge[1][0]:
+#                       if min(lines)[0] < minv:
+#                        # vleft= lines
+
+#                       if max(lines)[0]> maxv:
+#                        # vright = lines
+                         
+#                     else: 
+# =
+#             else: 
+#               minv= edges[0][0]
+#               maxv= edges[2][0]
+             
+#                minh= img2.shape[0]
+#                maxh= 0
+#                for i, lines in enumerate(hor_lines):
+#                    if min(lines)[1] < minh:
+#                        # htop= lines
+#                        minh= min(lines)[1]
+                   
+                   if max(lines)[1]> maxh:
+                       # hbottom = lines
+                       maxh= max(lines)[1]
+                       
+                       
+                       
        boxcoor_new=[(minv,minh), (minv,maxh), (maxv,minh), (maxv,maxh)]
        #Find location of the edges that is detected!!
        # Figure out where it is in the quadrants and assume it will go to the ref_edge
@@ -169,47 +250,6 @@ def draw_box(boxcoor, img, nama):
     return 
 
 
-#Input the reference chamber details 
-class ref_chamber:
-
-    def __init__(self, image, index_height):
-        self.input_image = image 
-        self.ref_height= index_height
-        
-    def ori_image_data(self):
-        sobel_image= sobel_operations(self.input_image)
-        ori_area= sobel_image.shape[0]*sobel_image.shape[1]
-        ori_edge = []
-        ori_midpoint =[]
-        list_mlg = []
-        list_t =[]
-        if (self.ref_height==100):
-            maxarea= 0.55*ori_area
-            minarea= 0.54*ori_area
-        
-        for t in np.arange(50,100,1): 
-            for mlg in [5,10]: 
-                edge, midpt = findedges(sobel_image,t,mlg)
-                if chamber_size(edge) > minarea and chamber_size(edge) < maxarea:
-                    if min(edge)[0] != 0 or min(edge)[1] != 0: 
-                         ori_edge.append(edge)
-                         ori_midpoint.append(midpt)
-                         list_mlg.append(mlg)
-                         list_t.append(t)
-        
-        area = ori_area
-        for i, edge in enumerate(ori_edge):
-            calc_area = chamber_size(edge)
-            if calc_area < area :
-                ref_edge= edge
-                ref_mlg = list_mlg[i]
-                ref_t = list_t[i]
-                ref_area = calc_area
-                ref_midpt= ori_midpoint[i]
-                area= calc_area
-
-        return ref_edge, ref_midpt, ref_mlg, ref_t, listof_t, ref_area, ori_area 
-        
         
         
        
