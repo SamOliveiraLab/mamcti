@@ -48,6 +48,6 @@ conda install <PACKAGE>
 
 2. In the experiments folder, the codes updated there can be used for different types of experiments according to the design of the microfluidic chamber. For now, it     can only take 1 run through of the experiment. It still needs to be changed to fit the current 'edge_detection_chambers.py' library.
     
-    
+ 
     
     
